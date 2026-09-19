@@ -367,6 +367,35 @@ gtk4_css=$(cat <<EOF
   --shade-color: rgba($darker_rgb, 0.45);
   --scrollbar-outline-color: rgba($bright_rgb, 0.45);
 }
+
+/* Defensive fallbacks: libadwaita reads var(--window-bg-color) (and friends)
+   for its surfaces, and if that custom property ever fails to resolve -- for
+   example when a GTK 4 build does not propagate :root custom properties to
+   every widget, or when a user's own gtk.css resets the variable -- the
+   property falls back to its initial value of transparent, which under
+   compositors like Hyprland shows as a see-through window. These rules paint
+   each surface directly from the named colors, which always resolve, so a
+   missing variable cannot leave a window without a background. They are
+   placed after the :root block so the variable assignments take precedence
+   for tools that honour them, and a user's own rules in gtk.css still
+   override these. */
+window {
+  background-color: $background;
+  color: $foreground;
+}
+window.dialog,
+dialog {
+  background-color: $lighter_background;
+  color: $foreground;
+}
+popover.background {
+  background-color: $lighter_background;
+  color: $foreground;
+}
+tooltip.background {
+  background-color: $lighter_background;
+  color: $bright_foreground;
+}
 EOF
 )
 
@@ -438,6 +467,36 @@ gtk3_css=$(cat <<EOF
 @define-color borders $selection;
 @define-color unfocused_borders $lighter_background;
 @define-color link_color $accent;
+
+/* Defensive fallbacks: GTK 3 themes such as adw-gtk3 read @theme_bg_color
+   and friends for their surfaces, but the theme is only loaded if it is
+   installed -- and even then the @define-color aliases above can fail to
+   resolve on certain GTK 3 builds, leaving the window with no background
+   at all (transparent). Paint the toplevel widgets directly here so a
+   window always has a background, regardless of whether the theme's own
+   rules apply. The user's own gtk.css still overrides these. */
+GtkWindow,
+window {
+  background-color: @theme_bg_color;
+  color: @theme_fg_color;
+}
+GtkWindow.dialog,
+GtkDialog,
+window.dialog,
+dialog {
+  background-color: @dialog_bg_color;
+  color: @dialog_fg_color;
+}
+GtkPopover,
+popover.background {
+  background-color: @popover_bg_color;
+  color: @popover_fg_color;
+}
+GtkTooltip,
+tooltip.background {
+  background-color: @theme_base_color;
+  color: @theme_text_color;
+}
 EOF
 )
 

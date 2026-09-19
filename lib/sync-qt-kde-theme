@@ -377,15 +377,30 @@ else:
     # relative to a directory descriptor it has verified. This was the fifth
     # copy of an atomic_write that made the temporary name exclusive but still
     # resolved the destination directory by pathname.
-    mode = (
-        stat.S_IMODE(globals_path.stat().st_mode)
-        if globals_path.exists()
-        else 0o600
-    )
+    # A newly created kdeglobals uses 0644, not 0600: every other config file
+    # this writes (Hyprchroma.colors, gtk-*/hyprchroma.css) is 0644, and a
+    # restrictive mode on kdeglobals alone broke KDE Frameworks 6 applications
+    # running under a different uid or through a system helper that could not
+    # read it -- those apps fell back to a default Qt palette (black on
+    # transparent) and the user saw "Qt is pure black" while GTK looked fine.
+    # An existing kdeglobals that a previous version of this plugin wrote with
+    # 0600 is upgraded to 0644 on the next sync, so the fix reaches machines
+    # that already have the broken mode on disk rather than only fresh installs.
+    if globals_path.exists():
+        existing_mode = stat.S_IMODE(globals_path.stat().st_mode)
+        # Read permission for group and other is what KF6 helpers need. If
+        # either is missing the file is upgraded; if both are present the
+        # user's own choice (setgid, sticky, extra execute bits) is preserved.
+        if not (existing_mode & 0o044):
+            mode = "644"
+        else:
+            mode = format(existing_mode, "o")
+    else:
+        mode = "644"
     subprocess.run(
         [os.path.join(os.environ.get("HYPRCHROMA_LIB", "/usr/lib/hyprchroma"),
                       "hyprchroma-state"),
-         "write-file", "--path", str(globals_path), "--mode", format(mode, "o")],
+         "write-file", "--path", str(globals_path), "--mode", mode],
         input=updated_text.encode(),
         check=True,
     )
