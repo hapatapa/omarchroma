@@ -374,27 +374,45 @@ gtk4_css=$(cat <<EOF
    every widget, or when a user's own gtk.css resets the variable -- the
    property falls back to its initial value of transparent, which under
    compositors like Hyprland shows as a see-through window. These rules paint
-   each surface directly from the named colors, which always resolve, so a
-   missing variable cannot leave a window without a background. They are
-   placed after the :root block so the variable assignments take precedence
-   for tools that honour them, and a user's own rules in gtk.css still
-   override these. */
-window {
+   each surface directly from the palette colors, which always resolve, so a
+   missing variable cannot leave a window without a background.
+
+   Selector specificity matters: libadwaita targets these surfaces with
+   classes (window.background, window.dialog, popover.background,
+   tooltip.background), and a bare window selector loses the cascade to
+   them. The class-qualified selectors below match libadwaita's specificity
+   so the literal hex values hold even when var() resolves to transparent.
+   They are placed after the :root block so the variable assignments take
+   precedence for tools that honour them, and a user's own rules in gtk.css
+   still override these. */
+window,
+window.background,
+window.solid-csd,
+window.csd {
   background-color: $background;
   color: $foreground;
 }
 window.dialog,
-dialog {
+dialog,
+dialog.background,
+window.dialog.message {
   background-color: $lighter_background;
   color: $foreground;
 }
-popover.background {
+popover.background,
+popover.background.compressed {
   background-color: $lighter_background;
   color: $foreground;
 }
-tooltip.background {
+tooltip.background,
+tooltip.background.csd {
   background-color: $lighter_background;
   color: $bright_foreground;
+}
+messagedialog,
+messagedialog.background {
+  background-color: $lighter_background;
+  color: $foreground;
 }
 EOF
 )
@@ -474,28 +492,43 @@ gtk3_css=$(cat <<EOF
    resolve on certain GTK 3 builds, leaving the window with no background
    at all (transparent). Paint the toplevel widgets directly here so a
    window always has a background, regardless of whether the theme's own
-   rules apply. The user's own gtk.css still overrides these. */
+   rules apply. Use class-qualified selectors so we match the specificity
+   of adw-gtk3's own rules, not just the bare type selector. The user's
+   own gtk.css still overrides these. */
 GtkWindow,
-window {
+GtkWindow.background,
+window,
+window.background {
   background-color: @theme_bg_color;
   color: @theme_fg_color;
 }
 GtkWindow.dialog,
 GtkDialog,
+GtkDialog.background,
 window.dialog,
-dialog {
+dialog,
+dialog.background {
   background-color: @dialog_bg_color;
   color: @dialog_fg_color;
 }
 GtkPopover,
+GtkPopover.background,
+popover,
 popover.background {
   background-color: @popover_bg_color;
   color: @popover_fg_color;
 }
 GtkTooltip,
+GtkTooltip.background,
+tooltip,
 tooltip.background {
   background-color: @theme_base_color;
   color: @theme_text_color;
+}
+GtkMessageDialog,
+messagedialog {
+  background-color: @dialog_bg_color;
+  color: @dialog_fg_color;
 }
 EOF
 )
